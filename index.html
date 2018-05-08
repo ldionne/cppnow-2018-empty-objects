@@ -1,0 +1,94 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>Template errors in C++</title>
+    <meta name="author" content="Louis Dionne">
+
+    <link rel="stylesheet" href="reveal/css/reveal.css">
+    <link rel="stylesheet" href="reveal/css/theme/black.css">
+    <link rel="stylesheet" href="custom.css">
+
+    <!-- Theme used for syntax highlighting of code -->
+    <link rel="stylesheet" href="highlight-styles/vs2015.css">
+
+    <!-- Printing and PDF exports -->
+    <script>
+      var link = document.createElement( 'link' );
+      link.rel = 'stylesheet';
+      link.type = 'text/css';
+      link.href = window.location.search.match( /print-pdf/gi ) ? 'reveal/css/print/pdf.css' : 'reveal/css/print/paper.css';
+      document.getElementsByTagName( 'head' )[0].appendChild( link );
+    </script>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <section data-markdown=""
+                 data-separator="^====+$"
+                 data-separator-vertical="^----+$"
+                 data-notes="^Note:">
+        <script type="text/template">
+
+## Template errors in C++
+#### Louis Dionne, C++Now 2018
+
+====
+
+<!-- .slide: class="slide-hidden" -->
+
+### Font test
+
+```c++
+class ThisIsAClass {
+
+};
+
+int main() {
+  // this is a comment
+  std::vector<Foobar> foobar;
+
+  foobar.push_back(Foo{...});
+  foobar.push_back(Bar{...});
+  foobar.push_back(Baz{...});
+
+  for (auto& x : foobar) {
+    x.do_something();
+  }
+}
+```
+
+==============================================================================
+
+### Thank you
+
+https://ldionne.com
+
+        </script>
+        </section>
+      </div>
+    </div>
+
+    <script src="js/jquery-3.2.1.min.js"></script>
+    <script src="reveal/js/reveal.js"></script>
+    <script src="reveal/lib/js/head.min.js"></script>
+
+    <script>
+      Reveal.initialize({
+        slideNumber: 'c', // 'c/t' -> useful when authoring to know how many slides there are
+        history: true,
+        transition: 'none',
+
+        dependencies: [
+          { src: 'reveal/plugin/markdown/marked.js' },
+          { src: 'reveal/plugin/markdown/markdown.js' },
+          { src: 'reveal/plugin/notes/notes.js', async: true },
+          { src: 'reveal/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+          { src: 'plugin/sampler.js' }
+        ]
+      });
+    </script>
+  </body>
+</html>
