@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-    <title>Template errors in C++</title>
+    <title></title>
     <meta name="author" content="Louis Dionne">
 
     <link rel="stylesheet" href="reveal/css/reveal.css">
@@ -32,31 +32,184 @@
                  data-notes="^Note:">
         <script type="text/template">
 
-## Template errors in C++
+## TODO
 #### Louis Dionne, C++Now 2018
+
+==============================================================================
+
+### The problem
+
+```c++
+template <typename T>
+void some_far_away_function() {
+  T t{}; // I REALLY need a default-constructed instance of T
+}
+
+struct NoDefault {
+  NoDefault() = delete;
+};
+
+some_far_away_function<NoDefault>(); // ERROR!
+```
+
+----
+
+### Concretely...
+
+```c++
+template <typename Lambda, typename ...Args>
+auto call(Args ...args) {
+  return Lambda{}(args...);
+}
+
+auto add = [](int x, int y) { return x + y; };
+
+call<decltype(add)>(1, 2); // ERROR!
+```
+
+----
+
+### The lambda is stateless
+
+WHY DOESN'T THIS WORK???
 
 ====
 
-<!-- .slide: class="slide-hidden" -->
-
-### Font test
+### A cheap solution
 
 ```c++
-class ThisIsAClass {
+template <typename T>
+T get_empty_object() {
+  char lol;
+  return reinterpret_cast<T&>(lol);
+}
 
+NoDefault clever = get_empty_object<NoDefault>();
+```
+
+----
+
+<img src="disgust.gif" alt="Disgust reaction">
+
+====
+
+### The solution
+
+```c++
+template <typename T>
+struct empty_object {
+  struct T1     { char c; };
+  struct T2 : T { char c; };
+  union Storage {
+    constexpr Storage() : t1{} { }
+    T1 t1;
+    T2 t2;
+  };
+  static T get() {
+    Storage storage{};
+    char const* c = &storage.t2.c;
+    T2 const* t2 = reinterpret_cast<T2 const*>(c);
+    T const* t = static_cast<T const*>(t2);
+    return *t;
+  }
 };
 
-int main() {
-  // this is a comment
-  std::vector<Foobar> foobar;
+NoDefault dont_mess_with_me = empty_object<NoDefault>::get();
+```
 
-  foobar.push_back(Foo{...});
-  foobar.push_back(Bar{...});
-  foobar.push_back(Baz{...});
+====
 
-  for (auto& x : foobar) {
-    x.do_something();
-  }
+### Let's take one step at a time
+
+----
+
+```c++
+template <typename T>
+struct empty_object {
+  static_assert(std::is_standard_layout<T>{}, "");
+  static_assert(std::is_empty<T>{}, "");
+
+  // ...
+};
+```
+
+Note: Make sure the trick is going to work
+
+====
+
+```c++
+struct T1     { char c; };
+struct T2 : T { char c; };
+```
+
+----
+
+### Observe this
+
+> Two standard-layout non-union class types may have a common initial
+> sequence of non-static data members and bit-fields, for a sequence of
+> one or more initial members (in order of declaration), if the members
+> have layout-compatible types [...].
+
+Hence, `T1` and `T2` have `c` as a common initial sequence of non-static data members.
+
+----
+
+### And this
+
+> Two standard-layout non-union class types are called layout-compatible
+> if [...] their common initial sequence consists of every non-static
+> data member and bit field.
+
+Hence, `T1` and `T2` are layout-compatible.
+
+====
+
+### The meat of the trick
+
+```c++
+union Storage {
+  constexpr Storage() : t1{} { }
+  T1 t1;
+  T2 t2;
+};
+
+static T get() {
+  Storage storage{};
+  char const* c = &storage.t2.c;
+  T2 const* t2 = reinterpret_cast<T2 const*>(c);
+  T const* t = static_cast<T const*>(t2);
+  return *t;
+}
+```
+
+----
+
+TODO
+
+```c++
+static T get() {
+  // Initialize the union with `T1` active.
+  Storage storage{};
+
+  // Access the member `c` of `T2` in the union:
+  //   In a standard-layout union with an active member of non-union class
+  //   type `T1`, it is permitted to read a non-static data member `m` of
+  //   another union member of non-union class type `T2` provided `m` is
+  //   part of the common initial sequence of `T1` and `T2` [...].
+  char const* c = &storage.t2.c;
+
+  // From this pointer, get a pointer back to `T2`:
+  //   A pointer to an object of standard-layout struct type can be
+  //   `reinterpret_cast` to pointer to its first non-static data member
+  //   (if it has non-static data members) [...], and vice versa.
+  //   (padding is not allowed before the first data member). [...]
+  T2 const* t2 = reinterpret_cast<T2 const*>(c);
+
+  // Finally, get a pointer to the base class `T` from the `T2` pointer.
+  T const* t = static_cast<T const*>(t2);
+
+  return *t;
 }
 ```
 
@@ -85,8 +238,7 @@ https://ldionne.com
           { src: 'reveal/plugin/markdown/marked.js' },
           { src: 'reveal/plugin/markdown/markdown.js' },
           { src: 'reveal/plugin/notes/notes.js', async: true },
-          { src: 'reveal/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
-          { src: 'plugin/sampler.js' }
+          { src: 'reveal/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
         ]
       });
     </script>
