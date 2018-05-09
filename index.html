@@ -4,12 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-    <title></title>
+    <title>The object upside down</title>
     <meta name="author" content="Louis Dionne">
 
     <link rel="stylesheet" href="reveal/css/reveal.css">
     <link rel="stylesheet" href="reveal/css/theme/black.css">
     <link rel="stylesheet" href="custom.css">
+    <link rel="stylesheet" href="line-numbers.css">
 
     <!-- Theme used for syntax highlighting of code -->
     <link rel="stylesheet" href="highlight-styles/vs2015.css">
@@ -32,7 +33,7 @@
                  data-notes="^Note:">
         <script type="text/template">
 
-## TODO
+## The object upside down
 #### Louis Dionne, C++Now 2018
 
 ==============================================================================
@@ -75,47 +76,28 @@ WHY DOESN'T THIS WORK???
 
 ====
 
-### A cheap solution
+### A "real" solution
 
-```c++
-template <typename T>
-T get_empty_object() {
-  char lol;
-  return reinterpret_cast<T&>(lol);
-}
-
-NoDefault clever = get_empty_object<NoDefault>();
-```
-
-----
-
-<img src="disgust.gif" alt="Disgust reaction">
-
-====
-
-### The solution
-
-```c++
-template <typename T>
+<pre><code data-trim data-noescape class="lang-cpp line-numbers" data-highlight-lines="19">
+template &lt;typename T>
 struct empty_object {
-  struct T1     { char c; };
-  struct T2 : T { char c; };
+  struct T1     { char m; };
+  struct T2 : T { char m; };
   union Storage {
-    constexpr Storage() : t1{} { }
+    Storage() : t1{} { }
     T1 t1;
     T2 t2;
   };
   static T get() {
     Storage storage{};
-    char const* c = &storage.t2.c;
-    T2 const* t2 = reinterpret_cast<T2 const*>(c);
-    T const* t = static_cast<T const*>(t2);
+    char const* m = &storage.t2.m;
+    T2 const* t2 = reinterpret_cast&lt;T2 const*>(m);
+    T const* t = static_cast&lt;T const*>(t2);
     return *t;
   }
 };
 
-NoDefault dont_mess_with_me = empty_object<NoDefault>::get();
-```
+NoDefault muhahahahah = empty_object&lt;NoDefault>::get();</code></pre>
 
 ====
 
@@ -123,94 +105,191 @@ NoDefault dont_mess_with_me = empty_object<NoDefault>::get();
 
 ----
 
-```c++
-template <typename T>
-struct empty_object {
-  static_assert(std::is_standard_layout<T>{}, "");
-  static_assert(std::is_empty<T>{}, "");
+<pre><code data-trim data-noescape class="lang-cpp line-numbers">
+static_assert(std::is_standard_layout&lt;T&gt;{});
+static_assert(std::is_empty&lt;T&gt;{});
+static_assert(std::is_trivially_destructible&lt;T&gt;{});
 
-  // ...
-};
-```
+struct T1     { char m; };
+struct T2 : T { char m; };
 
-Note: Make sure the trick is going to work
+static_assert(std::is_standard_layout&lt;T1&gt;{});
+static_assert(std::is_standard_layout&lt;T2&gt;{});
 
-====
+static_assert(!std::is_union&lt;T1&gt;{});
+static_assert(!std::is_union&lt;T2&gt;{});
 
-```c++
-struct T1     { char c; };
-struct T2 : T { char c; };
-```
+static_assert(std::is_class&lt;T1&gt;{});
+static_assert(std::is_class&lt;T2&gt;{});</code></pre>
 
 ----
 
-### Observe this
+### Observation 1
 
-> Two standard-layout non-union class types may have a common initial
-> sequence of non-static data members and bit-fields, for a sequence of
-> one or more initial members (in order of declaration), if the members
-> have layout-compatible types [...].
+<blockquote style="width:100%;"><p>
+Two standard-layout non-union class types may have a common initial
+sequence of non-static data members and bit-fields, for a sequence of
+one or more initial members (in order of declaration), if the members
+have layout-compatible types [...].
+</p></blockquote>
 
-Hence, `T1` and `T2` have `c` as a common initial sequence of non-static data members.
+Hence, `T1` and `T2` have `m` as a common initial sequence of non-static data members.
 
 ----
 
-### And this
+### Observation 2
 
-> Two standard-layout non-union class types are called layout-compatible
-> if [...] their common initial sequence consists of every non-static
-> data member and bit field.
+<blockquote style="width:100%;"><p>
+Two standard-layout non-union class types are called layout-compatible
+if [...] their common initial sequence consists of every non-static
+data member and bit field.
+</p></blockquote>
 
 Hence, `T1` and `T2` are layout-compatible.
 
-====
+----
 
-### The meat of the trick
+<pre><code data-trim data-noescape class="lang-cpp line-numbers" data-highlight-lines="5,11">
+struct T1     { char m; };
+struct T2 : T { char m; };
 
-```c++
 union Storage {
-  constexpr Storage() : t1{} { }
+  Storage() : t1{} { }
   T1 t1;
   T2 t2;
 };
 
 static T get() {
   Storage storage{};
-  char const* c = &storage.t2.c;
-  T2 const* t2 = reinterpret_cast<T2 const*>(c);
-  T const* t = static_cast<T const*>(t2);
+  char const* m = &storage.t2.m;
+  T2 const* t2 = reinterpret_cast&lt;T2 const*>(m);
+  T const* t = static_cast&lt;T const*>(t2);
   return *t;
-}
-```
+}</code></pre>
 
 ----
 
-TODO
+<pre><code data-trim data-noescape class="lang-cpp line-numbers" data-highlight-lines="12">
+struct T1     { char m; };
+struct T2 : T { char m; };
+
+union Storage {
+  Storage() : t1{} { }
+  T1 t1;
+  T2 t2;
+};
+
+static T get() {
+  Storage storage{};
+  char const* m = &storage.t2.m;
+  T2 const* t2 = reinterpret_cast&lt;T2 const*>(m);
+  T const* t = static_cast&lt;T const*>(t2);
+  return *t;
+}</code></pre>
+
+----
+
+### Yep, that's legal
+
+<blockquote style="width:100%;"><p>
+In a standard-layout union with an active member of non-union class
+type `T1`, it is permitted to read a non-static data member `m` of
+another union member of non-union class type `T2` provided `m` is
+part of the common initial sequence of `T1` and `T2` [...].
+</p></blockquote>
+
+----
+
+<pre><code data-trim data-noescape class="lang-cpp line-numbers" data-highlight-lines="13">
+struct T1     { char m; };
+struct T2 : T { char m; };
+
+union Storage {
+  Storage() : t1{} { }
+  T1 t1;
+  T2 t2;
+};
+
+static T get() {
+  Storage storage{};
+  char const* m = &storage.t2.m;
+  T2 const* t2 = reinterpret_cast&lt;T2 const*>(m);
+  T const* t = static_cast&lt;T const*>(t2);
+  return *t;
+}</code></pre>
+
+----
+
+### That's legal too
+
+<blockquote style="width:100%;"><p>
+A pointer to an object of standard-layout struct type can be
+`reinterpret_cast` to pointer to its first non-static data member [...],
+and vice versa. [...]
+</p></blockquote>
+
+----
+
+<pre><code data-trim data-noescape class="lang-cpp line-numbers" data-highlight-lines="14">
+struct T1     { char m; };
+struct T2 : T { char m; };
+
+union Storage {
+  Storage() : t1{} { }
+  T1 t1;
+  T2 t2;
+};
+
+static T get() {
+  Storage storage{};
+  char const* m = &storage.t2.m;
+  T2 const* t2 = reinterpret_cast&lt;T2 const*>(m);
+  T const* t = static_cast&lt;T const*>(t2);
+  return *t;
+}</code></pre>
+
+----
+
+### Now, this works!
 
 ```c++
-static T get() {
-  // Initialize the union with `T1` active.
-  Storage storage{};
-
-  // Access the member `c` of `T2` in the union:
-  //   In a standard-layout union with an active member of non-union class
-  //   type `T1`, it is permitted to read a non-static data member `m` of
-  //   another union member of non-union class type `T2` provided `m` is
-  //   part of the common initial sequence of `T1` and `T2` [...].
-  char const* c = &storage.t2.c;
-
-  // From this pointer, get a pointer back to `T2`:
-  //   A pointer to an object of standard-layout struct type can be
-  //   `reinterpret_cast` to pointer to its first non-static data member
-  //   (if it has non-static data members) [...], and vice versa.
-  //   (padding is not allowed before the first data member). [...]
-  T2 const* t2 = reinterpret_cast<T2 const*>(c);
-
-  // Finally, get a pointer to the base class `T` from the `T2` pointer.
-  T const* t = static_cast<T const*>(t2);
-
-  return *t;
+template <typename Lambda, typename ...Args>
+auto call(Args ...args) {
+  Lambda lambda = empty_object<Lambda>::get();
+  return lambda(args...);
 }
+
+auto add = [](int x, int y) { return x + y; };
+
+call<decltype(add)>(1, 2); // yay!
+```
+
+====
+
+### But really...
+
+<img src="disgust.gif" alt="Disgust reaction">
+
+----
+
+### [p0624r2](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0624r2.pdf)
+
+<img src="p0624.png" alt="Wording of P0624">
+
+----
+
+### In C++20, this works!
+
+```c++
+template <typename Lambda, typename ...Args>
+auto call(Args ...args) {
+  Lambda lambda{}; // OK in C++20
+  return lambda(args...);
+}
+
+auto add = [](int x, int y) { return x + y; };
+
+call<decltype(add)>(1, 2);
 ```
 
 ==============================================================================
@@ -238,7 +317,8 @@ https://ldionne.com
           { src: 'reveal/plugin/markdown/marked.js' },
           { src: 'reveal/plugin/markdown/markdown.js' },
           { src: 'reveal/plugin/notes/notes.js', async: true },
-          { src: 'reveal/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+          { src: 'reveal/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+          { src: 'line-numbers.js' }
         ]
       });
     </script>
